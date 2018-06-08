@@ -1,0 +1,327 @@
+//Led list
+#include <FastLED.h>
+#define NUM_LEDS 7
+#define LED_PIN 6
+ CRGB leds[NUM_LEDS];
+
+ /*** Variables for turning on and off the LED ligths ***/
+ const int off = 0;
+ const int on = 255;
+ int lengthOfFeedback = 1000;
+ int tall;
+//Buttons
+ int Hint = 5;
+ int Solution = 4;
+ int Next = 7;
+//Words 
+String Ord ="";
+String Kat ="";
+//RFID Cards
+String Kategorier[] = { "132 208 159 154","244 72 159 154","68 128 85 80","228 235 162 154","52 246 148 154"};
+String Helgekos[] = { "212 169 132 80","4 118 156 154","4 245 85 80","52 120 144 154","231 27 189 62"};
+String Tur[] = {"244 116 128 80","20 132 49 249","23 164 180 62","244 15 101 80","68 38 13 80"};
+String Butikk[] = {"52 73 151 154","192 93 155 94","148 252 155 154","16 63 149 94","228 98 157 154"};
+String Fest[] = {"100 153 174 154","4 111 92 80","116 127 158 154","180 107 157 154","36 1 150 154"};
+String Date[] = {"212 210 19 80","116 131 126 80","36 232 10 80","20 252 143 80","244 19 137 80"};
+String extraHelgekos[] = {"116 131 126 80"};
+String extraTur[] = {};
+String extraButikk[] = {"231 27 189 62"};
+String extraFest[] = {"231 27 189 62","116 131 126 80","244 19 137 80","52 120 144 154"};
+String extraDate[] = {"212 169 132 80"};
+
+int alfaLengde = 25;
+int ordTall;
+//RFID SCANNERS
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define RST_PIN         9          // Configurable, see typical pin layout above
+#define SS_1_PIN        10         // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 2
+#define SS_2_PIN        8          // Configurable, take a unused pin, only HIGH/LOW required, must be diffrent to SS 1
+
+#define NR_OF_READERS   2
+byte ssPins[] = {SS_1_PIN, SS_2_PIN};
+MFRC522 mfrc522[NR_OF_READERS];   // Create MFRC522 instance.
+ 
+void setup() {
+  Serial.begin(9600);
+ // Lights
+    pinMode(A1, OUTPUT);
+    pinMode(A0, OUTPUT);
+    pinMode(A3, OUTPUT);
+    pinMode(A4, OUTPUT);
+    pinMode(A5, OUTPUT);
+ //Buttons
+   pinMode(Hint, INPUT);
+   pinMode(Solution, INPUT);
+   pinMode(Next, INPUT);
+ 
+  SPI.begin();        // Init SPI bus
+//scanners
+  for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
+    mfrc522[reader].PCD_Init(ssPins[reader], RST_PIN); // Init each MFRC522 card
+    //Serial.print(F("Reader "));
+    //Serial.print(reader);
+    //Serial.print(F(": "));
+    mfrc522[reader].PCD_DumpVersionToSerial();
+  }
+//Ledlist
+    FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
+    FastLED.setBrightness(64);
+}
+
+
+void loop() {
+  //check button press
+  if(digitalRead(Next)){randomLED();}
+  if(digitalRead(Hint)){hint();}
+  if(digitalRead(Solution )){forklaring();}
+  //check answer
+  checkAnswer(Kat,Ord);
+  //Led list 
+  FastLED.show();
+  //turn off ledlist color after 5 sek
+  turnOffLed();
+  //Read RFID card
+  ReadCard();
+  
+} 
+
+void hint(){
+  //adds 35 (10 is the first file, and the hint files starts at 25 (number of words) +1
+  ordTall+= 35;
+   //Sends int to the other board
+  Serial.println(ordTall);
+  //turn the words place back to original
+  ordTall -=35;
+  delay(2000);
+}
+void forklaring(){
+  //adds 10 to the words place in the array,
+  ordTall+= 10;
+  //Sends int to the other board
+  Serial.println(ordTall);
+
+  //turn the words place back to original 
+  
+  ordTall -=10;
+  delay(2000);
+}
+
+void spin(){
+ analogWrite(A0,255);
+ delay(150);
+ analogWrite(A0,0);
+ analogWrite(A1,255);
+ delay(150);
+ analogWrite(A1,0);
+ analogWrite(A3,255);
+ delay(150);
+ analogWrite(A3,0);
+ analogWrite(A4,255);
+ delay(150);
+ analogWrite(A4,0);
+ analogWrite(A5,255);
+ delay(150);
+ analogWrite(A5,0);
+}
+//Turns on a random LED
+void randomLED(){
+  //Serial.println("next");
+  tall = random(1,6);
+  turnOffLED();
+  spin();
+  spin();
+  spin();
+  delay(200);
+  if(tall == 1){analogWrite(A1,255);} 
+  else if(tall == 2){analogWrite(A0,255);}
+  else if(tall == 3){analogWrite(A3,255);}
+  else if(tall == 4){analogWrite(A4,255);}
+  else if(tall == 5){analogWrite(A5,255);}
+  
+}
+//Turns off all LEDs
+void turnOffLED(){
+  analogWrite(A1, 0);
+  analogWrite(A0, 0);
+  analogWrite(A3, 0);
+  analogWrite(A4, 0);
+  analogWrite(A5, 0);
+  //Serial.println("Alt av");
+}
+/**
+ * Helper routine to dump a byte array as hex values to Serial.
+ */
+void dump_byte_array(byte *buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
+    //Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+    //Serial.print(buffer[i], HEX);
+  }
+}
+
+
+
+
+void ReadCard(){
+  for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
+    // Look for new cards
+    if (mfrc522[reader].PICC_IsNewCardPresent() && mfrc522[reader].PICC_ReadCardSerial()) {
+      //Shows which reader is used
+      //Serial.print(F("Reader "));
+      //Serial.print(reader);
+      
+      // Show some details of the PICC (that is: the tag/card)
+      //Serial.print(F(": Card UID:"));
+      String valg = (String(mfrc522[reader].uid.uidByte[0]) + " " + String(mfrc522[reader].uid.uidByte[1]) + " " + String(mfrc522[reader].uid.uidByte[2]) + " " + String(mfrc522[reader].uid.uidByte[3]));
+      //Serial.println(valg);
+      
+      //check if valg is a category 
+      boolean Check = false;
+      for (int i = 0; i < 5; i++) {
+        if(Kategorier[i] == valg){
+          setCat(valg);
+          Check = true;  
+        }
+      }
+      if(!Check){
+        setWord(valg);
+        setWordInt(valg);
+      }
+
+      // Halt PICC
+      mfrc522[reader].PICC_HaltA();
+      // Stop encryption on PCD
+      mfrc522[reader].PCD_StopCrypto1();
+    } //if (mfrc522[reader].PICC_IsNewC
+  } //for(uint8_t reader
+}
+void setWord(String w){
+  //Serial.println("SetWord");
+  Ord = w;
+  
+}
+void setCat(String k){
+  //Serial.println("SetCat");
+  Kat = k;
+}
+
+void checkAnswer(String kat, String ord){
+  
+  if(kat == "" || ord ==""){return;}
+  boolean funnet = false;
+
+  if(kat == "132 208 159 154"){
+       for (int i = 0; i < 5; i++) {
+        if(Helgekos[i] == ord){funnet = true; correctAnswer();}
+        }
+      for (int i = 0; i < 1; i++) {
+        if(extraHelgekos[i] == ord){funnet = true; halfCorrect();}
+        }
+      if(!funnet){wrongAnswer();}
+    }
+  if(kat == "244 72 159 154"){
+    for (int i = 0; i < 5; i++) {
+        if(Tur[i] == ord){funnet = true; correctAnswer();}
+        }
+      for (int i = 0; i < 0; i++) {
+        if(extraTur[i] == ord){funnet = true; halfCorrect();}
+        }
+      if(!funnet){wrongAnswer();}
+     }
+  if(kat == "68 128 85 80"){
+    for (int i = 0; i < 5; i++) {
+        if(Butikk[i] == ord){funnet = true; correctAnswer();}
+        }
+      for (int i = 0; i < 1; i++) {
+        if(extraButikk[i] == ord){funnet = true; halfCorrect();}
+        }
+      if(!funnet){wrongAnswer();}
+    }
+  if(kat == "228 235 162 154"){
+    for (int i = 0; i < 5; i++) {
+        if(Fest[i] == ord){funnet = true; correctAnswer();}
+        }
+      for (int i = 0; i < 4; i++) {
+        if(extraFest[i] == ord){funnet = true; halfCorrect();}
+        }
+      if(!funnet){wrongAnswer();}
+    }
+  if(kat == "52 246 148 154"){
+    for (int i = 0; i < 5; i++) {
+        if(Date[i] == ord){funnet = true; correctAnswer();}
+        }
+      for (int i = 0; i < 0; i++) {
+        if(extraDate[i] == ord){funnet = true; halfCorrect();}
+        }
+      if(!funnet){wrongAnswer();}
+     }
+  
+   }
+
+ void correctAnswer(){
+  for(int i = 0; i<NUM_LEDS; i++){
+    //Serial.print("Grønn");
+    leds[i] = CRGB::Green;
+  }
+  
+}
+void wrongAnswer(){
+  for(int i = 0; i<NUM_LEDS; i++){
+    //Serial.print("rød");
+    leds[i] = CRGB::Red;
+  }
+  
+}
+void halfCorrect(){
+  for(int i = 0; i<NUM_LEDS; i++){
+    //Serial.print("Gul");
+    leds[i] = CRGB::Yellow;
+  }
+  
+}
+
+void ledListOff(){
+  for(int i = 0; i<NUM_LEDS; i++){
+    //Serial.print("av");
+    leds[i] = 0;
+  }
+}
+void turnOffLed(){
+  if(Ord != "" && Kat != ""){
+    delay(5000);
+    
+    Ord = "";
+    ledListOff();
+    //Serial.print("delay");
+  }
+}
+
+void setWordInt(String s){
+  if(s =="244 116 128 80"){ordTall = 0;}
+  else if(s =="100 153 174 154"){ordTall = 1;}
+  else if(s =="52 73 151 154"){ordTall = 2;}
+  else if(s =="36 1 150 154"){ordTall = 3;}
+  else if(s =="52 120 144 154"){ordTall = 4;}
+  else if(s =="180 107 157 154"){ordTall = 5;}
+  else if(s =="20 132 49 249"){ordTall = 6;}
+  else if(s =="212 210 19 80"){ordTall = 7;}
+  else if(s =="228 98 157 154"){ordTall = 8;}
+  else if(s =="244 15 101 80"){ordTall = 9;}
+  else if(s =="4 245 85 80"){ordTall = 10;}
+  else if(s =="36 232 10 80"){ordTall = 11;}
+  else if(s =="20 252 143 80"){ordTall = 12;}
+  else if(s =="192 93 155 94"){ordTall = 13;}
+  else if(s =="212 169 132 80"){ordTall = 14;}
+  else if(s =="23 164 180 62"){ordTall = 15;}
+  else if(s =="244 19 137 80"){ordTall = 16;}
+  else if(s =="4 111 92 80"){ordTall = 17;}
+  else if(s =="16 63 149 94"){ordTall = 18;}
+  else if(s =="148 252 155 154"){ordTall = 19;}
+  else if(s =="231 27 189 62"){ordTall = 20;}
+  else if(s =="4 118 156 154"){ordTall = 21;}
+  else if(s =="116 131 126 80"){ordTall = 22;}
+  else if(s =="68 38 13 80"){ordTall = 23;}
+  else if(s =="116 127 158 154"){ordTall = 24;}
+  //Serial.print(ordTall);
+}
