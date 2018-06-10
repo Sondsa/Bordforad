@@ -60,9 +60,6 @@ void setup() {
 //scanners
   for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
     mfrc522[reader].PCD_Init(ssPins[reader], RST_PIN); // Init each MFRC522 card
-    //Serial.print(F("Reader "));
-    //Serial.print(reader);
-    //Serial.print(F(": "));
     mfrc522[reader].PCD_DumpVersionToSerial();
   }
 //Ledlist
@@ -101,13 +98,12 @@ void forklaring(){
   ordTall+= 10;
   //Sends int to the other board
   Serial.println(ordTall);
-
   //turn the words place back to original 
-  
   ordTall -=10;
   delay(2000);
 }
 
+//Makes a spin effect
 void spin(){
  analogWrite(A0,255);
  delay(150);
@@ -127,7 +123,6 @@ void spin(){
 }
 //Turns on a random LED
 void randomLED(){
-  //Serial.println("next");
   tall = random(1,6);
   turnOffLED();
   spin();
@@ -148,7 +143,6 @@ void turnOffLED(){
   analogWrite(A3, 0);
   analogWrite(A4, 0);
   analogWrite(A5, 0);
-  //Serial.println("Alt av");
 }
 /**
  * Helper routine to dump a byte array as hex values to Serial.
@@ -167,15 +161,9 @@ void ReadCard(){
   for (uint8_t reader = 0; reader < NR_OF_READERS; reader++) {
     // Look for new cards
     if (mfrc522[reader].PICC_IsNewCardPresent() && mfrc522[reader].PICC_ReadCardSerial()) {
-      //Shows which reader is used
-      //Serial.print(F("Reader "));
-      //Serial.print(reader);
-      
-      // Show some details of the PICC (that is: the tag/card)
-      //Serial.print(F(": Card UID:"));
+      //make a string out of the uid
       String valg = (String(mfrc522[reader].uid.uidByte[0]) + " " + String(mfrc522[reader].uid.uidByte[1]) + " " + String(mfrc522[reader].uid.uidByte[2]) + " " + String(mfrc522[reader].uid.uidByte[3]));
-      //Serial.println(valg);
-      
+    
       //check if valg is a category 
       boolean Check = false;
       for (int i = 0; i < 5; i++) {
@@ -197,12 +185,9 @@ void ReadCard(){
   } //for(uint8_t reader
 }
 void setWord(String w){
-  //Serial.println("SetWord");
   Ord = w;
-  
 }
 void setCat(String k){
-  //Serial.println("SetCat");
   Kat = k;
 }
 
@@ -261,21 +246,18 @@ void checkAnswer(String kat, String ord){
 
  void correctAnswer(){
   for(int i = 0; i<NUM_LEDS; i++){
-    //Serial.print("Grønn");
     leds[i] = CRGB::Green;
   }
   
 }
 void wrongAnswer(){
   for(int i = 0; i<NUM_LEDS; i++){
-    //Serial.print("rød");
     leds[i] = CRGB::Red;
   }
   
 }
 void halfCorrect(){
   for(int i = 0; i<NUM_LEDS; i++){
-    //Serial.print("Gul");
     leds[i] = CRGB::Yellow;
   }
   
@@ -283,21 +265,19 @@ void halfCorrect(){
 
 void ledListOff(){
   for(int i = 0; i<NUM_LEDS; i++){
-    //Serial.print("av");
     leds[i] = 0;
   }
 }
 void turnOffLed(){
   if(Ord != "" && Kat != ""){
     delay(5000);
-    
     Ord = "";
     ledListOff();
-    //Serial.print("delay");
   }
 }
 
 void setWordInt(String s){
+  //Finds the words place in alfabetical order
   if(s =="244 116 128 80"){ordTall = 0;}
   else if(s =="100 153 174 154"){ordTall = 1;}
   else if(s =="52 73 151 154"){ordTall = 2;}
@@ -323,5 +303,4 @@ void setWordInt(String s){
   else if(s =="116 131 126 80"){ordTall = 22;}
   else if(s =="68 38 13 80"){ordTall = 23;}
   else if(s =="116 127 158 154"){ordTall = 24;}
-  //Serial.print(ordTall);
 }
